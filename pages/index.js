@@ -1,69 +1,192 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import { useState, useEffect } from 'react'
+import ScoreBoard from '../components/ScoreBoard'
+
+const blank = '/images/blank.png';
+const width = 8
+const candyColors = [
+    '/images/blue-candy.png',
+    '/images/orange-candy.png',
+    '/images/purple-candy.png',
+    '/images/red-candy.png',
+    '/images/yellow-candy.png',
+    '/images/green-candy.png',
+]
 
 export default function Home() {
+  const [currentColorArrangement, setCurrentColorArrangement] = useState([])
+  const [squareBeingDragged, setSquareBeingDragged] = useState(null)
+  const [squareBeingReplaced, setSquareBeingReplaced] = useState(null)
+  const [scoreDisplay, setScoreDisplay] = useState(0)
+
+  const checkForColumnOfFour = () => {
+      for (let i = 0; i <= 39; i++) {
+
+        /**
+         * Uses width to check vertical pattern.
+         */
+          const columnOfFour = [i, i + width, i + width * 2, i + width * 3]
+          const decidedColor = currentColorArrangement[i]
+          const isBlank = currentColorArrangement[i] === blank
+
+          if (columnOfFour.every(square => currentColorArrangement[square] === decidedColor && !isBlank)) {
+              setScoreDisplay((score) => score + 4)
+              columnOfFour.forEach(square => currentColorArrangement[square] = blank)
+              return true
+          }
+      }
+  }
+
+  const checkForRowOfFour = () => {
+      for (let i = 0; i < 64; i++) {
+          const rowOfFour = [i, i + 1, i + 2, i + 3]
+          const decidedColor = currentColorArrangement[i]
+          const notValid = [5, 6, 7, 13, 14, 15, 21, 22, 23, 29, 30, 31, 37, 38, 39, 45, 46, 47, 53, 54, 55, 62, 63, 64]
+          const isBlank = currentColorArrangement[i] === blank
+
+          if (notValid.includes(i)) continue
+
+          if (rowOfFour.every(square => currentColorArrangement[square] === decidedColor && !isBlank)) {
+              setScoreDisplay((score) => score + 4)
+              rowOfFour.forEach(square => currentColorArrangement[square] = blank)
+              return true
+          }
+      }
+  }
+
+  const checkForColumnOfThree = () => {
+      for (let i = 0; i <= 47; i++) {
+          const columnOfThree = [i, i + width, i + width * 2]
+          const decidedColor = currentColorArrangement[i]
+          const isBlank = currentColorArrangement[i] === blank
+
+          if (columnOfThree.every(square => currentColorArrangement[square] === decidedColor && !isBlank)) {
+              setScoreDisplay((score) => score + 3)
+              columnOfThree.forEach(square => currentColorArrangement[square] = blank)
+              return true
+          }
+      }
+  }
+
+  const checkForRowOfThree = () => {
+      for (let i = 0; i < 64; i++) {
+          const rowOfThree = [i, i + 1, i + 2]
+          const decidedColor = currentColorArrangement[i]
+          const notValid = [6, 7, 14, 15, 22, 23, 30, 31, 38, 39, 46, 47, 54, 55, 63, 64]
+          const isBlank = currentColorArrangement[i] === blank
+
+          if (notValid.includes(i)) continue
+
+          if (rowOfThree.every(square => currentColorArrangement[square] === decidedColor && !isBlank)) {
+              setScoreDisplay((score) => score + 3)
+              rowOfThree.forEach(square => currentColorArrangement[square] = blank)
+              return true
+          }
+      }
+  }
+
+  const moveIntoSquareBelow = () => {
+      for (let i = 0; i <= 55; i++) {
+          const firstRow = [0, 1, 2, 3, 4, 5, 6, 7]
+          const isFirstRow = firstRow.includes(i)
+
+          if (isFirstRow && currentColorArrangement[i] === blank) {
+              let randomNumber = Math.floor(Math.random() * candyColors.length)
+              currentColorArrangement[i] = candyColors[randomNumber]
+          }
+
+          if ((currentColorArrangement[i + width]) === blank) {
+              currentColorArrangement[i + width] = currentColorArrangement[i]
+              currentColorArrangement[i] = blank
+          }
+      }
+  }
+
+  const dragStart = (e) => {
+      setSquareBeingDragged(e.target)
+  }
+  const dragDrop = (e) => {
+      setSquareBeingReplaced(e.target)
+  }
+  const dragEnd = () => {
+      const squareBeingDraggedId = parseInt(squareBeingDragged.getAttribute('data-id'))
+      const squareBeingReplacedId = parseInt(squareBeingReplaced.getAttribute('data-id'))
+
+      currentColorArrangement[squareBeingReplacedId] = squareBeingDragged.getAttribute('src')
+      currentColorArrangement[squareBeingDraggedId] = squareBeingReplaced.getAttribute('src')
+
+      const validMoves = [
+          squareBeingDraggedId - 1,
+          squareBeingDraggedId - width,
+          squareBeingDraggedId + 1,
+          squareBeingDraggedId + width
+      ]
+
+      const validMove = validMoves.includes(squareBeingReplacedId)
+
+      const isAColumnOfFour = checkForColumnOfFour()
+      const isARowOfFour = checkForRowOfFour()
+      const isAColumnOfThree = checkForColumnOfThree()
+      const isARowOfThree = checkForRowOfThree()
+
+      if (squareBeingReplacedId &&
+          validMove &&
+          (isARowOfThree || isARowOfFour || isAColumnOfFour || isAColumnOfThree)) {
+          setSquareBeingDragged(null)
+          setSquareBeingReplaced(null)
+      } else {
+          currentColorArrangement[squareBeingReplacedId] = squareBeingReplaced.getAttribute('src')
+          currentColorArrangement[squareBeingDraggedId] = squareBeingDragged.getAttribute('src')
+          setCurrentColorArrangement([...currentColorArrangement])
+      }
+  }
+
+
+  const createBoard = () => {
+      const randomColorArrangement = []
+      for (let i = 0; i < width * width; i++) {
+          const randomColor = candyColors[Math.floor(Math.random() * candyColors.length)]
+          randomColorArrangement.push(randomColor)
+      }
+      setCurrentColorArrangement(randomColorArrangement)
+  }
+
+  useEffect(() => {
+      createBoard()
+  }, [])
+
+  useEffect(() => {
+      const timer = setInterval(() => {
+          checkForColumnOfFour()
+          checkForRowOfFour()
+          checkForColumnOfThree()
+          checkForRowOfThree()
+          moveIntoSquareBelow()
+          setCurrentColorArrangement([...currentColorArrangement])
+      }, 100)
+      return () => clearInterval(timer)
+  }, [checkForColumnOfFour, checkForRowOfFour, checkForColumnOfThree, checkForRowOfThree, moveIntoSquareBelow, currentColorArrangement])
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <meta name="description" content="Generated by create next app" />
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
-        </a>
-      </footer>
+    <div className="app">
+    <div className="game">
+        {currentColorArrangement.map((candyColor, index) => (
+            <img
+                key={index}
+                src={candyColor}
+                width="70px"
+                height="70px"
+                alt={candyColor}
+                data-id={index}
+                draggable={true}
+                onDragStart={dragStart}
+                onDragOver={(e) => e.preventDefault()}
+                onDragEnter={(e) => e.preventDefault()}
+                onDragLeave={(e) => e.preventDefault()}
+                onDrop={dragDrop}
+                onDragEnd={dragEnd}
+            />
+        ))}
     </div>
+    <ScoreBoard score={scoreDisplay}/>
+</div>
   )
 }
